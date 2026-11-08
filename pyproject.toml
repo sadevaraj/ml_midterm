@@ -1,0 +1,16 @@
+[project]
+name = "ml-midterm"
+version = "0.1.0"
+description = "Machine learning midterm notebook project"
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "ipykernel",
+    "matplotlib (<3.11)",
+]
+
+[tool.poetry]
+package-mode = false
