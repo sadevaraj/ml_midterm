@@ -7,9 +7,12 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
     "numpy",
     "pandas",
-    "scikit-learn",
+    "scikit-learn==1.9.1; python_version >= '3.11'",
+    "scikit-learn==1.7.2; python_version < '3.11'",
     "ipykernel",
     "matplotlib (<3.11)",
+    "fastapi",
+    "uvicorn[standard]",
 ]
 
 [tool.poetry]

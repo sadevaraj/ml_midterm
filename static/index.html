@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f4f6fb">
+    <title>Mental Exhaustion Risk Estimate</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #172033;
+        background: #f4f6fb;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        padding: 40px 20px 64px;
+      }
+
+      main {
+        width: min(100%, 980px);
+        margin: 0 auto;
+      }
+
+      header { margin-bottom: 24px; }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: clamp(1.8rem, 4vw, 2.5rem);
+        letter-spacing: -0.04em;
+      }
+
+      header p, .notice, .section-help {
+        color: #58647a;
+        line-height: 1.55;
+      }
+
+      header p { max-width: 680px; margin: 0; }
+
+      .notice {
+        margin: 24px 0;
+        padding: 14px 16px;
+        border: 1px solid #d6deed;
+        border-radius: 12px;
+        background: #edf2fb;
+        font-size: 0.94rem;
+      }
+
+      form, .result {
+        border: 1px solid #e0e5ef;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 8px 28px rgb(29 44 74 / 5%);
+      }
+
+      form { padding: clamp(18px, 4vw, 32px); }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+        gap: 16px;
+      }
+
+      .field { display: flex; flex-direction: column; gap: 7px; }
+
+      label { font-size: 0.9rem; font-weight: 650; }
+
+      input, select {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid #cbd3e0;
+        border-radius: 9px;
+        background: #fff;
+        color: #172033;
+        font: inherit;
+      }
+
+      input:focus, select:focus {
+        outline: 3px solid rgb(67 103 220 / 20%);
+        border-color: #4367dc;
+      }
+
+      input::placeholder { color: #929bad; opacity: 1; }
+      .default-choice { color: #929bad; }
+      select option { color: #172033; }
+
+      .section-help { margin: 0 0 16px; font-size: 0.9rem; }
+
+      h2 { margin: 0 0 6px; font-size: 1.12rem; }
+
+      .field-section + .field-section {
+        margin-top: 30px;
+        padding-top: 26px;
+        border-top: 1px solid #e8ebf2;
+      }
+
+      button {
+        min-height: 48px;
+        margin-top: 28px;
+        padding: 0 20px;
+        border: 0;
+        border-radius: 10px;
+        background: #3659ce;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover { background: #2949b5; }
+      button:disabled { opacity: 0.65; cursor: wait; }
+
+      .result { margin-top: 20px; padding: 22px; }
+      .result[hidden], .error[hidden] { display: none; }
+      .result h2 { margin-bottom: 8px; }
+      .probability { margin: 0; font-size: 2rem; font-weight: 750; }
+      .verdict { margin: 6px 0 0; color: #58647a; }
+      .error { margin: 18px 0 0; color: #a22626; }
+
+      @media (max-width: 520px) {
+        body { padding: 28px 14px 44px; }
+        button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Mental Exhaustion Risk Estimate</h1>
+        <p>Enter the available details to estimate the model’s probability of reported mental exhaustion.</p>
+      </header>
+
+      <aside class="notice">
+        This is a statistical estimate based on the training data, not a medical
+        diagnosis or a substitute for professional support. Gray hints are the
+        model defaults; leave a field blank to use its shown default.
+      </aside>
+
+      <form id="prediction-form">
+        <div id="field-sections" aria-live="polite"></div>
+        <button id="submit-button" type="submit">Estimate probability</button>
+        <p id="error-message" class="error" role="alert" hidden></p>
+      </form>
+
+      <section id="result" class="result" aria-live="polite" hidden>
+        <h2>Prediction result</h2>
+        <p id="probability" class="probability"></p>
+        <p id="verdict" class="verdict"></p>
+      </section>
+    </main>
+
+    <script>
+      const form = document.querySelector("#prediction-form");
+      const sections = document.querySelector("#field-sections");
+      const submitButton = document.querySelector("#submit-button");
+      const errorMessage = document.querySelector("#error-message");
+      const result = document.querySelector("#result");
+      const probabilityText = document.querySelector("#probability");
+      const verdictText = document.querySelector("#verdict");
+
+      function renderFields(fields) {
+        const grouped = new Map();
+        for (const field of fields) {
+          if (!grouped.has(field.group)) grouped.set(field.group, []);
+          grouped.get(field.group).push(field);
+        }
+
+        for (const [title, groupFields] of grouped) {
+          const section = document.createElement("section");
+          section.className = "field-section";
+
+          const heading = document.createElement("h2");
+          heading.textContent = title;
+          section.append(heading);
+
+          const help = document.createElement("p");
+          help.className = "section-help";
+          help.textContent = "Optional. Leave blank to use the gray default shown in each field.";
+          section.append(help);
+
+          const grid = document.createElement("div");
+          grid.className = "field-grid";
+          for (const field of groupFields) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "field";
+
+            const label = document.createElement("label");
+            label.htmlFor = field.name;
+            label.textContent = field.label;
+
+            let input;
+            if (field.type === "text") {
+              input = document.createElement("select");
+              input.className = "default-choice";
+              input.add(new Option(`Default: ${field.default}`, "", true, true));
+              for (const option of field.options) {
+                input.add(new Option(option, option));
+              }
+              input.addEventListener("change", () => {
+                input.classList.toggle("default-choice", input.value === "");
+              });
+            } else {
+              input = document.createElement("input");
+              input.type = "number";
+              input.step = field.type === "integer" ? "1" : "any";
+              input.placeholder = `Default: ${field.default}`;
+            }
+            input.id = field.name;
+            input.name = field.name;
+            input.autocomplete = "off";
+
+            wrapper.append(label, input);
+            grid.append(wrapper);
+          }
+          section.append(grid);
+          sections.append(section);
+        }
+      }
+
+      async function loadSchema() {
+        const response = await fetch("/schema");
+        if (!response.ok) throw new Error("Could not load the prediction fields.");
+        const schema = await response.json();
+        renderFields(schema.fields);
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        errorMessage.hidden = true;
+        result.hidden = true;
+        submitButton.disabled = true;
+        submitButton.textContent = "Estimating…";
+
+        try {
+          const record = {};
+          for (const [name, value] of new FormData(form).entries()) {
+            const trimmed = String(value).trim();
+            if (trimmed === "") continue;
+            const input = form.elements.namedItem(name);
+            record[name] = input.tagName === "SELECT" ? trimmed : Number(trimmed);
+          }
+
+          const response = await fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(record),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail?.[0]?.msg ?? "The prediction request failed.");
+          }
+
+          probabilityText.textContent = `${(data.conversion_probability * 100).toFixed(1)}%`;
+          verdictText.textContent = data.conversion
+            ? "The model predicts a higher likelihood of reported mental exhaustion."
+            : "The model predicts a lower likelihood of reported mental exhaustion.";
+          result.hidden = false;
+        } catch (error) {
+          errorMessage.textContent = error.message || "Unable to get a prediction.";
+          errorMessage.hidden = false;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = "Estimate probability";
+        }
+      });
+
+      loadSchema().catch((error) => {
+        errorMessage.textContent = error.message || "Unable to load the prediction fields.";
+        errorMessage.hidden = false;
+        submitButton.disabled = true;
+      });
+    </script>
+  </body>
+</html>
