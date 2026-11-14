@@ -175,6 +175,8 @@ docker run --rm -e PORT=10000 -p 10000:10000 ml-midterm
 
 ### Deploy to Render
 
+Live deployment: [https://ml-midterm.onrender.com/](https://ml-midterm.onrender.com/).
+
 In the [Render dashboard](https://dashboard.render.com/), create
 **New > Web Service**, select **Git Provider**, and connect this repository.
 Use these settings:
@@ -196,7 +198,7 @@ and binds to `0.0.0.0`. Do not replace it with a localhost-only command.
 
 Render builds and hosts the Docker image directly from Git, so you do not
 need to upload an image to Docker Hub. After deployment, open the service's
-HTTPS URL (for example, `https://your-service.onrender.com/`) to use the page;
+HTTPS URL, [https://ml-midterm.onrender.com/](https://ml-midterm.onrender.com/), to use the page;
 do not append a port number. The same service serves both the webpage and
 prediction API, so no separate frontend deployment or CORS configuration is
 needed.
